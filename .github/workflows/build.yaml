@@ -15,13 +15,13 @@ jobs:
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
-          java-version: "17" # Standar untuk Android
+          java-version: "17"
           distribution: "temurin"
           cache: gradle
 
-      - name: Buat file gradlew yang hilang
+      - name: Buat file gradlew (Versi 8.4)
         working-directory: ./android
-        run: gradle wrapper
+        run: gradle wrapper --gradle-version 8.4
 
       - name: Beri izin eksekusi pada Gradle
         working-directory: ./android
