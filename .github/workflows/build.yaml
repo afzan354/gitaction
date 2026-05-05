@@ -23,9 +23,9 @@ jobs:
         run: |
           mkdir temp_wrapper
           cd temp_wrapper
-          # Buat file settings.gradle palsu agar Gradle 9 tidak protes
           echo "rootProject.name = 'temp'" > settings.gradle
-          gradle wrapper --gradle-version 8.4
+          # Ubah versi ke 8.11.1 sesuai permintaan Android Plugin
+          gradle wrapper --gradle-version 8.11.1
           cp -r gradle ../android/
           cp gradlew ../android/
           cp gradlew.bat ../android/
