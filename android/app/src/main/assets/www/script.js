@@ -17,10 +17,6 @@ const db = firebase.firestore();
 // ==========================================
 // VARIABEL GLOBAL APLIKASI
 // ==========================================
-// Pengaturan API sekarang kosong & dinamis, diambil dari Database!
-let API_BASE_URL = ''; 
-let API_TOKEN = ''; 
-
 let currentUser = null;
 let isRegisterMode = false; 
 
@@ -41,7 +37,7 @@ let globalWatchedEps = [];
 let globalLastServer = ""; 
 let isSubscribed = false; 
 let globalLastEpisodeUrl = "";
-let globalWaNumber = "6281232890475"; // Nomor darurat jika Firebase gagal
+let globalWaNumber = "6281232890475"; 
 let globalAnnouncement = "";
 
 // ==========================================
@@ -62,122 +58,41 @@ function showToast(message, isError = false) {
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
-        // JIKA LOGIN BERHASIL: Jangan langsung masuk! Cek Pengaturan API & Token dulu
         hideAllPages();
-        initializeAppToken(); 
+        initializeAppSettings(); 
     } else {
         currentUser = null;
-        // JIKA BELUM LOGIN: Kunci aplikasi, hanya tampilkan Auth Page
         hideAllPages();
         authPage.style.display = 'flex';
-        bottomNav.style.display = 'none'; // Sembunyikan navigasi bawah
+        bottomNav.style.display = 'none';
         isRegisterMode = false;
         updateAuthUI();
     }
 });
 
 // ==========================================
-// 2. ALUR BARU: MANAJEMEN & VALIDASI TOKEN
+// 2. ALUR BARU: BYPASS TOKEN & AMBIL SETTING
 // ==========================================
-async function initializeAppToken() {
-    // Tampilkan pesan loading di grid sementara mengecek token
+async function initializeAppSettings() {
     headerApp.style.display = 'block';
     movieGrid.style.display = 'grid';
-    movieGrid.innerHTML = '<p style="text-align:center; grid-column: 1/-1; color: #4a72ff; margin-top:50px;"><i class="fa-solid fa-spinner fa-spin"></i> Memvalidasi Akun & Server...</p>';
+    movieGrid.innerHTML = '<p style="text-align:center; grid-column: 1/-1; color: #4a72ff; margin-top:50px;"><i class="fa-solid fa-spinner fa-spin"></i> Menyiapkan Aplikasi...</p>';
 
     try {
-        // A. AMBIL URL API DARI FIRESTORE (Agar fleksibel bisa kamu ganti kapan saja)
-        let defaultUrl = 'https://trash.riyul.com/geni/api.php'; // Fallback URL
-        let defaultToken = 'zanhub_4c366ea468c954879afc3e8821e36a53'; // Fallback Token
-
         const appSettings = await db.collection('settings').doc('api_config').get();
         if (appSettings.exists) {
-            defaultUrl = appSettings.data().baseUrl || defaultUrl;
-            defaultToken = appSettings.data().defaultToken || defaultToken;
-            
-            // TAMBAHAN BARU: Tarik nomor WA dan Pengumuman
             globalWaNumber = appSettings.data().whatsapp || "6281234567890";
             globalAnnouncement = appSettings.data().pengumuman || "";
         }
-
-        API_BASE_URL = defaultUrl;
         
-        // B. CEK APAKAH USER PUNYA TOKEN PREMIUM PRIBADI
-        const userDoc = await db.collection('users').doc(currentUser.uid).get();
-        if (userDoc.exists && userDoc.data().premiumToken) {
-            API_TOKEN = userDoc.data().premiumToken;
-            console.log("Menggunakan Token Premium Pribadi");
-        } else {
-            API_TOKEN = defaultToken;
-            console.log("Menggunakan Token Default");
-        }
-
-        // C. TES TOKEN KE SERVER API
-        const testUrl = `${API_BASE_URL}?type=home&token=${API_TOKEN}`;
-        const response = await fetch(testUrl);
-        const result = await response.json();
-
-        // D. HASIL VALIDASI
-        if (result.status === "ok") {
-            // TOKEN VALID! Buka kunci aplikasi
-            bottomNav.style.display = 'flex'; 
-            fetchDonghua(); // Load halaman home
-        } else {
-            // TOKEN MATI / SALAH! Kunci layar ke Halaman Token
-            showTokenPage();
-        }
+        // Buka kunci aplikasi langsung karena data sudah ditarik secara Native (Gratis)
+        bottomNav.style.display = 'flex'; 
+        fetchDonghua(); 
     } catch (error) {
-        console.error("Gagal validasi server", error);
-        showTokenPage(); // Jika server error, asumsikan token bermasalah
+        console.error("Gagal menarik pengaturan", error);
+        bottomNav.style.display = 'flex'; 
+        fetchDonghua(); 
     }
-}
-
-function showTokenPage() {
-    hideAllPages();
-    tokenPage.style.display = 'flex';
-    bottomNav.style.display = 'none'; // Pastikan nav bawah mati
-}
-
-async function savePremiumToken() {
-    const inputToken = document.getElementById('premium-token-input').value.trim();
-    if (!inputToken) {
-        showToast("Token tidak boleh kosong!", true);
-        return;
-    }
-
-    const btn = document.getElementById('btn-save-token');
-    btn.innerText = "Mengecek Token...";
-    btn.disabled = true;
-
-    try {
-        // Cek langsung token tersebut ke API
-        const testUrl = `${API_BASE_URL}?type=home&token=${inputToken}`;
-        const response = await fetch(testUrl);
-        const result = await response.json();
-
-        if (result.status === "ok") {
-            // Token Valid! Simpan ke profil user di Firestore
-            await db.collection('users').doc(currentUser.uid).set({
-                premiumToken: inputToken,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-
-            showToast("Token Premium Berhasil Diaktifkan!");
-            API_TOKEN = inputToken; // Gunakan token ini
-            
-            // Buka aplikasi
-            tokenPage.style.display = 'none';
-            bottomNav.style.display = 'flex';
-            fetchDonghua(); 
-        } else {
-            showToast("Token Tidak Valid atau Expired!", true);
-        }
-    } catch (error) {
-        showToast("Gagal terhubung ke server. Cek internetmu.", true);
-    }
-
-    btn.innerText = "Verifikasi Token";
-    btn.disabled = false;
 }
 
 // ==========================================
@@ -197,7 +112,6 @@ function updateAuthUI() {
     document.getElementById('auth-form').style.display = 'block';
     document.querySelector('.auth-switch').style.display = 'block';
     
-    // Sembunyikan Menu Profil
     const profileMenu = document.getElementById('profile-menu');
     if (profileMenu) profileMenu.style.display = 'none';
 
@@ -215,10 +129,8 @@ function showUserProfile() {
     document.querySelector('.auth-switch').style.display = 'none';
     document.getElementById('auth-title').innerText = "Pengaturan Akun";
     
-    // Tampilkan Menu Profil
     document.getElementById('profile-menu').style.display = 'block';
 
-    // Tampilkan Pengumuman Jika Ada
     if (globalAnnouncement && globalAnnouncement.trim() !== "") {
         document.getElementById('announcement-box').style.display = 'block';
         document.getElementById('announcement-text').innerText = globalAnnouncement;
@@ -226,11 +138,7 @@ function showUserProfile() {
         document.getElementById('announcement-box').style.display = 'none';
     }
     
-    let tokenStatus = "Token Default";
-    db.collection('users').doc(currentUser.uid).get().then(doc => {
-        if(doc.exists && doc.data().premiumToken) tokenStatus = "Token Premium Aktif";
-        document.getElementById('auth-subtitle').innerHTML = `Halo, ${currentUser.email}<br><span style="color:#4a72ff;font-weight:bold;margin-top:5px;display:block;">Status: ${tokenStatus}</span>`;
-    });
+    document.getElementById('auth-subtitle').innerHTML = `Halo, ${currentUser.email}<br><span style="color:#4a72ff;font-weight:bold;margin-top:5px;display:block;">Status: Native Mode (Gratis)</span>`;
 }
 
 async function handleAuth(event) {
@@ -249,7 +157,6 @@ async function handleAuth(event) {
             await auth.signInWithEmailAndPassword(email, password);
             showToast("Login berhasil!");
         }
-        // Catatan: onSuccess, onAuthStateChanged otomatis terpicu dan memanggil initializeAppToken()
     } catch (error) { showToast("Gagal: " + error.message, true); }
 
     submitBtn.disabled = false;
@@ -279,13 +186,12 @@ function hideAllPages() {
 // FUNGSI BOTTOM NAVIGATION, HISTORY & SAVED
 // ==========================================
 function clickBottomNav(menu) {
-    // --- TAMBAHAN BARU: MATIKAN VIDEO SAAT PINDAH MENU ---
     const iframe = document.getElementById('video-frame');
     if (iframe && iframe.src !== "") {
-        iframe.src = ""; // Kosongkan sumber video agar benar-benar berhenti
-        releaseWakeLock(); // Matikan fitur anti-sleep
+        iframe.src = ""; 
+        releaseWakeLock(); 
     }
-    // -----------------------------------------------------
+    
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     const activeNav = document.getElementById('nav-' + menu);
     if (activeNav) activeNav.classList.add('active');
@@ -298,7 +204,7 @@ function clickBottomNav(menu) {
     } else if (menu === 'profile') {
         hideAllPages();
         authPage.style.display = 'flex';
-        showUserProfile(); // Tampilkan profil, bukan form login
+        showUserProfile(); 
         sessionStorage.setItem('lastPage', 'profile');
     } else if (menu === 'history') {
         loadHistoryFromFirebase();
@@ -332,7 +238,6 @@ async function loadHistoryFromFirebase() {
                         <img src="${data.image}" alt="${data.title}">
                         <div class="badge-new">Riwayat</div>
                         <div class="badge-eps" style="background: rgba(255,74,74,0.9); padding: 3px 6px; border-radius: 4px;">Terakhir: ${data.lastEpisodeText}</div>
-                
                         <button class="btn-delete-item" onclick="deleteSingleHistory(event, '${data.donghuaUrl}')">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
@@ -449,15 +354,26 @@ async function searchDonghua(keyword) {
 
     try {
         movieGrid.innerHTML = `<p style="text-align:center; grid-column: 1/-1; color: #888;">Mencari "${keyword}"...</p>`;
-        const url = `${API_BASE_URL}?type=search&q=${encodeURIComponent(keyword)}&token=${API_TOKEN}`;
-        const response = await fetch(url);
-        const result = await response.json();
         
-        if (result.status === "ok" && result.data && result.data.length > 0) {
-            renderMovies(result.data);
+        // MENGGUNAKAN NATIVE KOTLIN BRIDGE
+        const jsonString = window.NativeAnichin.searchAnime(keyword);
+        const resultData = JSON.parse(jsonString);
+        
+        if (resultData && resultData.length > 0) {
+            const formattedData = resultData.map(item => ({
+                title: item.title,
+                url: item.url,
+                image: item.poster,
+                badge: item.type
+            }));
+            renderMovies(formattedData);
             movieGrid.insertAdjacentHTML('afterbegin', `<h3 style="grid-column: 1/-1; font-size: 14px; margin-bottom: 5px; color: #4a72ff;">Hasil pencarian: ${keyword}</h3>`);
-        } else movieGrid.innerHTML = `<p style="text-align:center; grid-column: 1/-1; color: #888;">Donghua "${keyword}" tidak ditemukan.</p>`;
-    } catch (error) { movieGrid.innerHTML = `<p style="text-align:center; color:#ff4a4a; grid-column: 1/-1;">Gagal mencari data API.</p>`; }
+        } else {
+            movieGrid.innerHTML = `<p style="text-align:center; grid-column: 1/-1; color: #888;">Donghua "${keyword}" tidak ditemukan.</p>`;
+        }
+    } catch (error) { 
+        movieGrid.innerHTML = `<p style="text-align:center; color:#ff4a4a; grid-column: 1/-1;">Gagal mencari data Native.</p>`; 
+    }
 }
 
 function loadCategory(type, btnElement) {
@@ -476,13 +392,7 @@ function loadCategory(type, btnElement) {
 }
 
 // ==========================================
-// FUNGSI HOME & FETCH DATA
-// ==========================================
-// ==========================================
-// FUNGSI HOME & FETCH DATA (DENGAN CACHE 5 MENIT)
-// ==========================================
-// ==========================================
-// FUNGSI HOME & FETCH DATA (DENGAN CACHE 5 MENIT)
+// FUNGSI HOME & FETCH DATA (NATIVE KOTLIN)
 // ==========================================
 async function fetchDonghua(type = 'home') {
     sessionStorage.setItem('lastPage', 'home');
@@ -492,7 +402,6 @@ async function fetchDonghua(type = 'home') {
     headerApp.style.display = 'block';
     movieGrid.style.display = 'grid';
 
-    // 1. CEK DATA CACHE DI SESSION STORAGE
     const cacheKey = 'cache_donghua_' + type;
     const cachedStr = sessionStorage.getItem(cacheKey);
     
@@ -501,10 +410,7 @@ async function fetchDonghua(type = 'home') {
         const now = Date.now();
         const limaMenit = 5 * 60 * 1000; 
 
-        // Jika umur cache masih di bawah 5 menit, gunakan data ini langsung
         if (now - cachedData.timestamp < limaMenit) {
-            console.log("Memuat dari Cache untuk tab:", type);
-            // Pisahkan perenderan berdasarkan tipe data
             if (type === 'schedule') {
                 renderSchedule(cachedData.data);
             } else {
@@ -514,36 +420,39 @@ async function fetchDonghua(type = 'home') {
         }
     }
 
-    // 2. JIKA CACHE KOSONG ATAU KEDALUWARSA, PANGGIL API SERVER
     try {
         movieGrid.innerHTML = '<p style="text-align:center; grid-column: 1/-1; color: #888;">Memuat data donghua...</p>';
-        const url = `${API_BASE_URL}?type=${type}&token=${API_TOKEN}`;
-        const response = await fetch(url);
-        const result = await response.json();
-        
-        if (result.status === "ok") {
-            const newDataToCache = {
-                timestamp: Date.now(),
-                data: result.data
-            };
-            sessionStorage.setItem(cacheKey, JSON.stringify(newDataToCache));
+
+        if (type === 'home') {
+            // MENGGUNAKAN NATIVE KOTLIN BRIDGE
+            const jsonString = window.NativeAnichin.getLatestUpdate(1);
+            const resultData = JSON.parse(jsonString);
             
-            // Pisahkan perenderan berdasarkan tipe data
-            if (type === 'schedule') {
-                renderSchedule(result.data);
-            } else {
-                renderMovies(result.data);
-            }
+            const formattedData = resultData.map(item => ({
+                title: item.title,
+                url: item.url,
+                image: item.poster,
+                badge: item.type
+            }));
+
+            const newDataToCache = { timestamp: Date.now(), data: formattedData };
+            sessionStorage.setItem(cacheKey, JSON.stringify(newDataToCache));
+            renderMovies(formattedData);
+
+        } else if (type === 'schedule') {
+            movieGrid.innerHTML = `<p style="text-align:center; color:#888; grid-column: 1/-1;">Fitur Jadwal Native sedang dalam pengembangan.</p>`;
         }
+
     } catch (error) { 
-        movieGrid.innerHTML = `<p style="text-align:center; color:#ff4a4a; grid-column: 1/-1;">Gagal memuat data API.</p>`; 
+        console.error(error);
+        movieGrid.innerHTML = `<p style="text-align:center; color:#ff4a4a; grid-column: 1/-1;">Gagal memuat data dari Native Bridge.</p>`; 
     }
 }
 
 function renderMovies(movies) {
     movieGrid.innerHTML = '';
-    if (!Array.isArray(movies)) {
-        movieGrid.innerHTML = `<p style="text-align:center; grid-column: 1/-1; color: #ff4a4a;">Format data tidak didukung.</p>`;
+    if (!Array.isArray(movies) || movies.length === 0) {
+        movieGrid.innerHTML = `<p style="text-align:center; grid-column: 1/-1; color: #ff4a4a;">Data Kosong.</p>`;
         return;
     }
 
@@ -585,63 +494,12 @@ function renderMovies(movies) {
     });
 }
 
-
-// ==========================================
-// FUNGSI RENDER KHUSUS JADWAL (SCHEDULE)
-// ==========================================
 function renderSchedule(scheduleData) {
-    movieGrid.innerHTML = '';
-    
-    // Looping melalui setiap hari (Minggu, Senin, dst) di dalam object data
-    for (const day in scheduleData) {
-        const dayMovies = scheduleData[day];
-        
-        // Jika hari tersebut ada animenya, buatkan judul harinya
-        if (dayMovies && dayMovies.length > 0) {
-            
-            // Judul Hari (Tampil memanjang menutupi kolom grid)
-            movieGrid.innerHTML += `
-                <h3 style="grid-column: 1/-1; font-size: 16px; margin: 15px 0 10px 0; color: #ffd700; border-bottom: 1px solid #333; padding-bottom: 5px;">
-                    <i class="fa-regular fa-calendar-check"></i> Jadwal Hari ${day}
-                </h3>
-            `;
-            
-            // Looping anime yang rilis di hari tersebut
-            dayMovies.forEach(movie => {
-                let title = movie.title;
-                const poster = movie.image;
-                const badge = movie.badge || 'New'; 
-                const urlAsli = movie.url; 
-                // Jika jam tayang kosong, tulis "TBA" (To Be Announced)
-                const time = (movie.time && movie.time !== "") ? movie.time : "TBA"; 
-
-                // Karena badge di API jadwamu isinya angka episode (misal: "7"), kita beri teks 'Eps'
-                const episodeText = isNaN(badge) ? badge : 'Eps ' + badge;
-
-                const cardHTML = `
-                    <div class="movie-card" onclick="goToDetail('${urlAsli}')">
-                        <div class="movie-poster">
-                            <img src="${poster}" alt="${title}">
-                            <div class="badge-new" style="background-color: #ff4a4a;"><i class="fa-regular fa-clock"></i> ${time}</div>
-                            <div class="badge-eps">${episodeText}</div>
-                        </div>
-                        <div class="movie-details">
-                            <h3 class="title">${title}</h3>
-                        </div>
-                    </div>
-                `;
-                movieGrid.innerHTML += cardHTML;
-            });
-        }
-    }
-    
-    // Jika ternyata jadwal kosong semua
-    if (movieGrid.innerHTML === '') {
-        movieGrid.innerHTML = `<p style="text-align:center; grid-column: 1/-1; color: #888;">Jadwal belum tersedia.</p>`;
-    }
+    movieGrid.innerHTML = `<p style="text-align:center; grid-column: 1/-1; color: #888;">Jadwal belum tersedia.</p>`;
 }
+
 // ==========================================
-// FUNGSI DETAIL PAGE
+// FUNGSI DETAIL PAGE (NATIVE KOTLIN)
 // ==========================================
 async function goToDetail(targetUrl, isRestoring = false) {
     globalDetailUrl = targetUrl;
@@ -650,7 +508,7 @@ async function goToDetail(targetUrl, isRestoring = false) {
 
     globalWatchedEps = [];
     globalLastServer = "";
-    globalLastEpisodeUrl = ""; // Reset episode terakhir
+    globalLastEpisodeUrl = ""; 
     isSubscribed = false; 
     
     const subBtn = document.getElementById('btn-subscribe');
@@ -665,7 +523,7 @@ async function goToDetail(targetUrl, isRestoring = false) {
             if (docHist.exists) {
                 globalWatchedEps = docHist.data().watchedEpisodes || [];
                 globalLastServer = docHist.data().lastServer || "";
-                globalLastEpisodeUrl = docHist.data().lastEpisodeUrl || ""; // Ambil episode terakhir dari database
+                globalLastEpisodeUrl = docHist.data().lastEpisodeUrl || ""; 
             }
             const docSub = await db.collection('users').doc(currentUser.uid).collection('saved').doc(encodeURIComponent(targetUrl)).get();
             if (docSub.exists) {
@@ -680,7 +538,6 @@ async function goToDetail(targetUrl, isRestoring = false) {
         detailPage.style.display = 'block';
         document.getElementById('detail-title').innerText = "Memuat detail...";
         
-        // PERBAIKAN ERROR MERAH: Menggunakan gambar SVG inline (tanpa internet)
         const loadingImgSvg = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22400%22%20height%3D%22300%22%20viewBox%3D%220%200%20400%20300%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23121215%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%23ffffff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2220%22%3ELoading...%3C%2Ftext%3E%3C%2Fsvg%3E';
         document.getElementById('detail-image').src = loadingImgSvg;
         
@@ -688,17 +545,23 @@ async function goToDetail(targetUrl, isRestoring = false) {
     }
 
     try {
-        const url = `${API_BASE_URL}?type=detail&url=${encodeURIComponent(targetUrl)}&token=${API_TOKEN}`;
-        const response = await fetch(url);
-        const result = await response.json();
+        // MENGGUNAKAN NATIVE KOTLIN BRIDGE
+        const jsonString = window.NativeAnichin.getDetailAndEpisodes(targetUrl);
+        const detailData = JSON.parse(jsonString);
 
-        if(result.status === "ok") {
-            let baseTitle = result.title;
-            const titleMatch = result.title.match(/^(.*?)\s*(?:Episode|Eps|Season|Subtitle)/i);
+        if (detailData && detailData.title) {
+            let baseTitle = detailData.title;
+            const titleMatch = detailData.title.match(/^(.*?)\s*(?:Episode|Eps|Season|Subtitle)/i);
             if (titleMatch) baseTitle = titleMatch[1].trim(); 
 
-            let validEpisodes = result.episodes.filter(eps => eps.text.toLowerCase().includes(baseTitle.toLowerCase()));
-            if (validEpisodes.length === 0) validEpisodes = result.episodes;
+            const mappedEpisodes = detailData.episodes.map(ep => ({
+                text: ep.title,
+                url: ep.url,
+                date: ep.date
+            }));
+
+            let validEpisodes = mappedEpisodes.filter(eps => eps.text.toLowerCase().includes(baseTitle.toLowerCase()));
+            if (validEpisodes.length === 0) validEpisodes = mappedEpisodes;
 
             const uniqueEps = [];
             const seenUrls = new Set();
@@ -709,9 +572,9 @@ async function goToDetail(targetUrl, isRestoring = false) {
             globalEpisodes = uniqueEps;
 
             if (!isRestoring) {
-                document.getElementById('detail-title').innerText = result.title;
-                document.getElementById('detail-image').src = result.image;
-                document.getElementById('detail-desc').innerText = result.description;
+                document.getElementById('detail-title').innerText = detailData.title;
+                document.getElementById('detail-image').src = detailData.poster;
+                document.getElementById('detail-desc').innerText = detailData.description;
                 renderEpisodes(uniqueEps, 'episode-list');
             }
         }
@@ -780,7 +643,7 @@ async function saveToFirebaseHistory(epsUrl, epsTitle, serverUrl) {
 }
 
 // ==========================================
-// FUNGSI PEMUTAR VIDEO (PLAYER)
+// FUNGSI PEMUTAR VIDEO (PLAYER) - NEXT STEP
 // ==========================================
 async function watchEpisode(epsUrl) {
     sessionStorage.setItem('lastPage', 'watch');
@@ -797,41 +660,14 @@ async function watchEpisode(epsUrl) {
     const serverSelect = document.getElementById('server-select');
     
     iframe.src = "";
-    serverSelect.innerHTML = '<option value="">Mencari server...</option>';
+    serverSelect.innerHTML = '<option value="">Server belum dibuat (Tahap Kotlin Berikutnya)</option>';
     document.getElementById('btn-prev').disabled = true;
     document.getElementById('btn-next').disabled = true;
 
     requestWakeLock();
 
-    try {
-        const url = `${API_BASE_URL}?type=watch&url=${encodeURIComponent(epsUrl)}&token=${API_TOKEN}`;
-        const response = await fetch(url);
-        const result = await response.json();
-
-        if(result.status === "ok") {
-            const servers = result.servers;
-            let defaultServer = servers.find(s => s.url === globalLastServer);
-            if (!defaultServer) defaultServer = servers.find(s => s.label.toLowerCase().includes('ok.ru'));
-            if (!defaultServer) defaultServer = servers[0];
-
-            serverSelect.innerHTML = servers.map(s => {
-                const isSelected = s.url === defaultServer.url ? 'selected' : '';
-                return `<option value="${s.url}" ${isSelected}>${s.label}</option>`;
-            }).join('');
-
-            iframe.src = defaultServer.url;
-
-            saveToFirebaseHistory(epsUrl, epsTitle, defaultServer.url);
-            renderEpisodes(globalEpisodes, 'player-episode-list');
-
-            currentNavUrls = result.navigation; 
-            if (currentNavUrls.prev) document.getElementById('btn-prev').disabled = false;
-            if (currentNavUrls.next) document.getElementById('btn-next').disabled = false;
-        }
-    } catch (error) {
-        console.error("Gagal meload video", error);
-        serverSelect.innerHTML = '<option value="">Gagal memuat server</option>';
-    }
+    // WARNING: BAGIAN INI AKAN KITA ROMBAK PADA TAHAP KOTLIN EXTRACTOR!
+    showToast("Fitur Server Video akan ditambahkan selanjutnya!", true);
 }
 
 function changeServer(newUrl) {
@@ -864,37 +700,25 @@ function releaseWakeLock() {
     if (wakeLock !== null) wakeLock.release().then(() => { wakeLock = null; });
 }
 
-// Catatan: Karena kita punya sistem token baru, kita tidak butuh init otomatis dari DOMContentLoaded lagi.
-// Semuanya akan dipicu dari auth.onAuthStateChanged() di bagian atas script.
-// ==========================================
-// FUNGSI TOMBOL MULAI NONTON
-// ==========================================
 function mulaiNonton() {
     if (globalEpisodes.length === 0) {
         showToast("Daftar episode sedang dimuat atau tidak tersedia.", true);
         return;
     }
-
-    // 1. Jika ada riwayat episode terakhir, lanjutkan episode tersebut
     if (globalLastEpisodeUrl) {
         showToast("Melanjutkan dari riwayat terakhir...");
         watchEpisode(globalLastEpisodeUrl);
         return;
     }
-
-    // 2. Jika belum pernah nonton sama sekali, cari episode 1.
-    // Karena daftar episode biasanya urut dari terbaru (atas) ke terlama (bawah), 
-    // kita ambil episode index terakhir (paling bawah)
     const episodePertama = globalEpisodes[globalEpisodes.length - 1];
-    
     showToast("Memulai dari Episode Awal...");
     watchEpisode(episodePertama.url);
 }
+
 // ==========================================
-// FUNGSI PENGATURAN (WA & CLEAR HISTORY)
+// PENGATURAN (WA & CLEAR HISTORY) & DEVICE READY
 // ==========================================
 function contactAdmin() {
-    // Menghapus karakter non-angka (seperti + atau spasi) dari database jika ada
     const cleanNumber = globalWaNumber.replace(/\D/g,'');
     const waUrl = `https://wa.me/${cleanNumber}`;
     window.open(waUrl, '_blank');
@@ -902,117 +726,74 @@ function contactAdmin() {
 
 async function clearHistory() {
     if (!currentUser) return;
-    
-    // Konfirmasi bawaan browser agar tidak sengaja terhapus
-    if (!confirm("Apakah kamu yakin ingin menghapus semua riwayat tontonan?")) {
-        return;
-    }
+    if (!confirm("Apakah kamu yakin ingin menghapus semua riwayat tontonan?")) return;
 
     try {
         const historyRef = db.collection('users').doc(currentUser.uid).collection('history');
         const snapshot = await historyRef.get();
-        
         if (snapshot.empty) {
             showToast("Riwayat sudah kosong.");
             return;
         }
 
-        // Fitur Batch Delete dari Firebase (Hapus banyak data sekaligus)
         const batch = db.batch();
-        snapshot.docs.forEach((doc) => {
-            batch.delete(doc.ref);
-        });
-        
+        snapshot.docs.forEach((doc) => { batch.delete(doc.ref); });
         await batch.commit();
         
-        globalWatchedEps = []; // Bersihkan memori lokal
+        globalWatchedEps = []; 
         showToast("Riwayat berhasil dibersihkan!");
     } catch (error) {
         console.error("Gagal menghapus riwayat:", error);
         showToast("Gagal menghapus riwayat.", true);
     }
 }
-// ==========================================
-// FUNGSI HAPUS RIWAYAT SATUAN
-// ==========================================
+
 async function deleteSingleHistory(event, donghuaUrl) {
-    // Mencegah klik bocor menembus ke kartu (yang akan membuka halaman detail)
     event.stopPropagation();
-    
-    // Tampilkan popup konfirmasi singkat
-    if (!confirm("Hapus donghua ini dari riwayat?")) {
-        return; 
-    }
+    if (!confirm("Hapus donghua ini dari riwayat?")) return; 
 
     try {
-        // Hapus spesifik dokumen tersebut dari Firebase
         await db.collection('users').doc(currentUser.uid).collection('history').doc(encodeURIComponent(donghuaUrl)).delete();
-        
         showToast("Berhasil dihapus dari riwayat!");
-        
-        // Muat ulang daftar riwayat agar kartu yang dihapus langsung hilang dari layar
         loadHistoryFromFirebase();
     } catch (error) {
-        console.error("Gagal menghapus riwayat satuan", error);
         showToast("Gagal menghapus riwayat.", true);
     }
 }
-document.addEventListener('deviceready', function() {
-    
-    // --- 1. HANDLE ROTASI VIDEO SAAT FULLSCREEN (DIPERBARUI) ---
-    // Gunakan array event untuk mendeteksi fullscreen di berbagai versi WebView/Browser
-    const fullscreenEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
 
+document.addEventListener('deviceready', function() {
+    const fullscreenEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
     fullscreenEvents.forEach(function(eventName) {
         document.addEventListener(eventName, function() {
-            // Cek apakah ada elemen (seperti iframe video) yang sedang fullscreen
             const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
-
             if (isFullscreen) {
-                // PAKSA orientasi ke Landscape (bukan sekadar di-unlock)
-                screen.orientation.lock('landscape').catch(function(error) {
-                    console.warn("Gagal mengunci ke landscape: ", error);
-                    screen.orientation.unlock(); // Fallback jika lock gagal
-                });
+                screen.orientation.lock('landscape').catch(function() { screen.orientation.unlock(); });
             } else {
-                // Kunci kembali ke Portrait saat keluar dari fullscreen
-                screen.orientation.lock('portrait').catch(function(error) {
-                    console.warn("Gagal mengunci ke portrait: ", error);
-                });
+                screen.orientation.lock('portrait').catch(function() {});
             }
         });
     });
 
-
-    // --- 2. BLOCK POP-UP & BLANK LINK (KECUALI WHATSAPP) ---
-    // Menimpa fungsi window.open bawaan yang sering dipakai iklan pop-up
     window.origOpen = window.open;
     window.open = function(url, name, features) {
         if (url && (url.includes('wa.me') || url.includes('api.whatsapp.com') || url.includes('whatsapp://'))) {
-            // Izinkan link WA terbuka di aplikasi luar (_system)
             return window.origOpen(url, '_system', features);
         }
-        console.warn('Pop-up diblokir oleh sistem: ' + url);
-        return null; // Blokir pop-up lainnya
+        console.warn('Pop-up diblokir: ' + url);
+        return null; 
     };
 
-    // Mencegah klik pada tag <a> yang mengarah ke luar atau target="_blank"
     document.addEventListener('click', function(e) {
         let target = e.target.closest('a');
         if (target) {
             let href = target.getAttribute('href');
-            
-            // Cek apakah itu link WhatsApp
             if (href && (href.includes('wa.me') || href.includes('api.whatsapp.com') || href.includes('whatsapp://'))) {
                 e.preventDefault();
-                window.open(href, '_system'); // Buka via InAppBrowser / Sistem
+                window.open(href, '_system'); 
             } 
-            // Jika link mencoba membuka tab baru (biasanya iklan/pop-up)
             else if (target.getAttribute('target') === '_blank') {
                 e.preventDefault();
-                console.warn('Link blank diblokir: ' + href);
             }
         }
     });
-
 }, false);
