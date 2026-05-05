@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Donghua App</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="app-container">
+
+        <header>
+            <div class="top-bar">
+                <div class="logo-placeholder">▶️</div>
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Cari Donghua Di Sini">
+                </div>
+                <div class="profile-icon">💬</div>
+            </div>
+            
+            <div class="categories">
+                <button class="btn-category active" id="btn-home" onclick="loadCategory('home', this)">Home</button>
+                <button class="btn-category" id="btn-ongoing" onclick="loadCategory('ongoing', this)">Ongoing</button>
+                <button class="btn-category" id="btn-completed" onclick="loadCategory('completed', this)">Completed</button>
+            </div>
+        </header>
+
+        <main class="movie-grid">
+
+           <!-- <div class="movie-card">
+                <div class="movie-poster">
+                    <img src="https://via.placeholder.com/300x400/2a2a35/ffffff?text=Poster+1" alt="Poster">
+                    <div class="badge-new">New</div>
+                    <div class="badge-rating"><i class="fa-solid fa-star" style="color: #ffd700;"></i> 7.5</div>
+                    <div class="badge-eps">Eps 24</div>
+                </div>
+                <div class="movie-details">
+                    <div class="views"><i class="fa-regular fa-eye"></i> 2,3k views</div>
+                    <h3 class="title">The Gate of Mystical Realm</h3>
+                </div>
+            </div>
+
+            <div class="movie-card">
+                <div class="movie-poster">
+                    <img src="https://via.placeholder.com/300x400/2a2a35/ffffff?text=Poster+2" alt="Poster">
+                    <div class="badge-new">New</div>
+                    <div class="badge-rating"><i class="fa-solid fa-star" style="color: #ffd700;"></i> 7.9</div>
+                    <div class="badge-eps">Eps 599</div>
+                </div>
+                <div class="movie-details">
+                    <div class="views"><i class="fa-regular fa-eye"></i> 5,4k views</div>
+                    <h3 class="title">Supreme God Emperor</h3>
+                </div>
+            </div>
+
+            <div class="movie-card">
+                <div class="movie-poster">
+                    <img src="https://via.placeholder.com/300x400/2a2a35/ffffff?text=Poster+3" alt="Poster">
+                    <div class="badge-new">New</div>
+                    <div class="badge-rating"><i class="fa-solid fa-star" style="color: #ffd700;"></i> 9.4</div>
+                    <div class="badge-eps">Eps 74</div>
+                </div>
+                <div class="movie-details">
+                    <div class="views"><i class="fa-regular fa-eye"></i> 594 views</div>
+                    <h3 class="title">Azure Legacy S3</h3>
+                </div>
+            </div> -->
+
+        </main>
+        <!--<div class="show-more-container">
+            <button class="btn-show-more">Show more</button>
+        </div> -->
+
+        
+        <section id="detail-page" style="display: none;">
+
+            <div class="back-header" onclick="goBack()">
+                <i class="fa-solid fa-arrow-left"></i> Kembali
+            </div>
+
+            <div class="detail-hero">
+                <img id="detail-image" src="" alt="Poster">
+                <div class="hero-overlay"></div>
+            </div>
+
+            <div class="detail-content">
+                <h2 id="detail-title">Loading...</h2>
+                <div class="detail-actions">
+                    <button class="btn-primary" id="btn-mulai-nonton" onclick="mulaiNonton()"><i class="fa-solid fa-play"></i> Mulai Nonton</button>
+                    <button class="btn-secondary" id="btn-subscribe" onclick="toggleSubscribe()"><i class="fa-regular fa-heart"></i> Subscribe</button>
+                </div>
+
+                <p id="detail-desc">Deskripsi sedang dimuat...</p>
+
+                <h3>Daftar Episode</h3>
+                <div id="episode-list" class="episode-container">
+                    <p>Memuat episode...</p>
+                </div>
+            </div>
+
+        </section>
+
+        <section id="player-page" style="display: none;">
+
+            <div class="back-header" onclick="goBackFromPlayer()">
+                <i class="fa-solid fa-arrow-left"></i> Kembali ke Detail
+            </div>
+
+            <div class="video-container">
+                <iframe id="video-frame" 
+                src="" 
+                frameborder="0" 
+                allow="autoplay; fullscreen" 
+                allowfullscreen="true" 
+                webkitallowfullscreen="true" 
+                mozallowfullscreen="true"
+                sandbox="allow-scripts allow-same-origin allow-presentation allow-forms">
+            </iframe>
+        </div>
+
+        <div class="player-controls">
+            <button id="btn-prev" onclick="playNextPrev('prev')" disabled><i class="fa-solid fa-backward-step"></i></button>
+
+            <select id="server-select" onchange="changeServer(this.value)">
+                <option value="">Memuat server...</option>
+            </select>
+
+            <button id="btn-next" onclick="playNextPrev('next')" disabled><i class="fa-solid fa-forward-step"></i></button>
+        </div>
+
+        <div class="player-info" style="padding: 15px;">
+            <h3 id="player-title" style="margin-bottom: 15px; color: #4a72ff; line-height: 1.4;">Memuat Judul...</h3>
+
+            <h4 style="margin-bottom: 10px; color: #fff;">Daftar Episode:</h4>
+            <div id="player-episode-list" class="episode-container">
+            </div>
+        </div>
+
+    </section>
+    <section id="auth-page" style="display: none;">
+        <div class="auth-container">
+            <h2 id="auth-title">Masuk ke Akun</h2>
+            <p id="auth-subtitle">Simpan riwayat & donghua favoritmu!</p>
+
+            <form id="auth-form" onsubmit="handleAuth(event)">
+                <div class="input-group">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" id="auth-email" placeholder="Email" required>
+                </div>
+                <div class="input-group">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="auth-password" placeholder="Password (Min. 6 Karakter)" required minlength="6">
+                </div>
+                <button type="submit" class="btn-primary" id="auth-submit-btn" style="width: 100%; margin-top: 10px; padding: 12px;">Masuk</button>
+            </form>
+
+            <p class="auth-switch">
+                <span id="auth-switch-text">Belum punya akun?</span> 
+                <b onclick="toggleAuthMode()" id="auth-switch-btn">Daftar di sini</b>
+            </p>
+
+            <div id="profile-menu" style="display: none; width: 100%; text-align: left; margin-top: 20px;">
+
+                <div id="announcement-box" style="background: #2a2a35; padding: 15px; border-radius: 8px; border-left: 4px solid #ffd700; margin-bottom: 20px; display: none;">
+                    <h4 style="color: #ffd700; margin-bottom: 5px; font-size: 13px;"><i class="fa-solid fa-bullhorn"></i> Pengumuman</h4>
+                    <p id="announcement-text" style="font-size: 12px; color: #ccc; line-height: 1.5;"></p>
+                </div>
+
+                <button class="btn-secondary" style="width: 100%; margin-bottom: 10px; text-align: left; padding: 12px; background: #25252b; border: 1px solid #333;" onclick="contactAdmin()">
+                    <i class="fa-brands fa-whatsapp" style="color: #25D366; width: 25px;"></i> Hubungi Admin
+                </button>
+
+                <button class="btn-secondary" style="width: 100%; margin-bottom: 20px; text-align: left; padding: 12px; background: #25252b; border: 1px solid #333;" onclick="clearHistory()">
+                    <i class="fa-solid fa-trash-can" style="color: #ff4a4a; width: 25px;"></i> Bersihkan Riwayat
+                </button>
+
+                <button class="btn-logout" onclick="logout()" style="width: 100%; margin-bottom: 25px; padding: 12px;">
+                    <i class="fa-solid fa-right-from-bracket"></i> Keluar Akun
+                </button>
+
+                <div style="text-align: center; color: #666; font-size: 11px;">
+                    <p>Powered by Zanhub API</p>
+                    <p style="margin-top: 3px;">Versi 1.0.0</p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+    <section id="token-page" style="display: none;">
+        <div class="auth-container">
+            <i class="fa-solid fa-lock" style="font-size: 50px; color: #ff4a4a; margin-bottom: 15px;"></i>
+            <h2>Akses Terkunci</h2>
+            <p style="color: #888; font-size: 13px; margin-bottom: 25px;">Token API kamu sudah expired atau tidak valid. Silakan masukkan Token Premium baru untuk melanjutkan.</p>
+
+            <div class="input-group">
+                <i class="fa-solid fa-key"></i>
+                <input type="text" id="premium-token-input" placeholder="Masukkan Token Zanhub di sini">
+            </div>
+            <button class="btn-primary" id="btn-save-token" onclick="savePremiumToken()" style="width: 100%; margin-bottom: 15px;">Verifikasi Token</button>
+
+            <a href="#" onclick="contactAdmin(); return false;" style="color: #4a72ff; text-decoration: none; font-size: 13px; font-weight: bold;"><i class="fa-brands fa-whatsapp"></i> Beli Token Premium ke Admin</a>
+
+            <br><br>
+            <button class="btn-logout" onclick="logout()" style="padding: 8px; font-size: 12px; background: #333;">Logout Akun</button>
+        </div>
+    </section>
+    <nav class="bottom-nav" id="bottom-nav" style="display: none;">
+        <div class="nav-item active" id="nav-home" onclick="clickBottomNav('home')">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+        </div>
+        <div class="nav-item" id="nav-schedule" onclick="clickBottomNav('schedule')">
+            <i class="fa-regular fa-calendar-check"></i>
+            <span>Jadwal</span>
+        </div>
+        <div class="nav-item" id="nav-history" onclick="clickBottomNav('history')">
+            <i class="fa-regular fa-clock"></i>
+            <span>Riwayat</span>
+        </div>
+        <div class="nav-item" id="nav-saved" onclick="clickBottomNav('saved')">
+            <i class="fa-solid fa-play"></i>
+            <span>Tersimpan</span>
+        </div>
+        <div class="nav-item" id="nav-profile" onclick="clickBottomNav('profile')">
+            <i class="fa-solid fa-gear"></i>
+            <span>Profil</span>
+        </div>
+    </nav>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+<div id="toast" class="toast">Pesan Notifikasi</div>
+<script src="cordova.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

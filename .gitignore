@@ -1,0 +1,12 @@
+# Mengabaikan folder build dan cache Gradle
+.gradle/
+build/
+*/build/
+*/*/build/
+*.apk
+*.aab
+*.jks
+*.keystore
+.idea/
+*.iml
+local.properties
