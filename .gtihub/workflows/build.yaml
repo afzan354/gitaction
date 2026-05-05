@@ -1,0 +1,36 @@
+name: Build Android APK Otomatis
+
+# Workflow ini akan berjalan setiap kali kamu melakukan 'push' ke branch main/master
+on:
+  push:
+    branches: ["main", "master"]
+
+jobs:
+  build:
+    # Server GitHub yang digunakan (Linux Ubuntu)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17" # Standar untuk Android modern
+          distribution: "temurin"
+          cache: gradle # Mempercepat proses build selanjutnya
+
+      - name: Beri izin eksekusi pada Gradle
+        run: chmod +x ./gradlew
+
+      - name: Build APK (Debug)
+        # Perintah ini sama seperti yang dieksekusi Android Studio di latar belakang
+        run: ./gradlew assembleDebug
+
+      - name: Simpan APK agar bisa diunduh
+        uses: actions/upload-artifact@v4
+        with:
+          name: aplikasi-dechanic-debug
+          # Path default tempat APK dihasilkan
+          path: app/build/outputs/apk/debug/app-debug.apk
