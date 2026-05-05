@@ -23,6 +23,8 @@ jobs:
         run: |
           mkdir temp_wrapper
           cd temp_wrapper
+          # Buat file settings.gradle palsu agar Gradle 9 tidak protes
+          echo "rootProject.name = 'temp'" > settings.gradle
           gradle wrapper --gradle-version 8.4
           cp -r gradle ../android/
           cp gradlew ../android/
