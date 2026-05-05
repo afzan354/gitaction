@@ -19,8 +19,11 @@ jobs:
           distribution: "temurin"
           cache: gradle
 
+      - name: Buat file gradlew yang hilang
+        working-directory: ./android
+        run: gradle wrapper
+
       - name: Beri izin eksekusi pada Gradle
-        # Tambahkan working-directory agar perintah dieksekusi di dalam folder android/
         working-directory: ./android
         run: chmod +x ./gradlew
 
@@ -32,5 +35,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aplikasi-zanhub-debug
-          # Path disesuaikan karena berada di dalam folder android/
           path: android/app/build/outputs/apk/debug/app-debug.apk
