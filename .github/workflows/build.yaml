@@ -19,9 +19,14 @@ jobs:
           distribution: "temurin"
           cache: gradle
 
-      - name: Buat file gradlew (Versi 8.4)
-        working-directory: ./android
-        run: gradle wrapper --gradle-version 8.4
+      - name: Pancing file gradlew dari folder kosong (Bypass Error 9.x)
+        run: |
+          mkdir temp_wrapper
+          cd temp_wrapper
+          gradle wrapper --gradle-version 8.4
+          cp -r gradle ../android/
+          cp gradlew ../android/
+          cp gradlew.bat ../android/
 
       - name: Beri izin eksekusi pada Gradle
         working-directory: ./android
